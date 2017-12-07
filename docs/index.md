@@ -7,4 +7,8 @@ Hello there
 
 ## Usage
 
+## Structure
+
+![socrates](misc/socrates_structure.001.png)
+
 ## Examples
