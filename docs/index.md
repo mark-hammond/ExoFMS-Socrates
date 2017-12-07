@@ -1,3 +1,10 @@
-## ExoFMS Socrates Documentation
+# ExoFMS Socrates Documentation
 
+## Introduction
 Hello there
+
+## Installation
+
+## Usage
+
+## Examples
