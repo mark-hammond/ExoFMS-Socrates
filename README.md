@@ -50,7 +50,7 @@ Run the test XX for a lava planet.
 
 See XX for detailed instructions.
 
-##Acknowledgements
+## Acknowledgements
 
 Thanks to the Socrates team and UK Met Office for developing and sharing the model.
 
