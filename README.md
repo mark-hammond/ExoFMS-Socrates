@@ -5,40 +5,14 @@
 
 This is an unfinished repo for the coupling of Socrates to Exo-FMS
 
-## Installation
+## Quickstart
 
-Download the latest Socrates version from XXX.
+See https://mark-hammond.github.io/ExoFMS-Socrates/ for more detailed installation instructions
 
-Install it to your srcmods folder.
+1) Download the latest Socrates version from XX
 
-Copy the XX files from this repo.
+2) Install it, and copy it to your srcmods folder with the contents of "src" here
 
-## Usage
-
- 
-```fortran
-    id_soc_olr = &
-    register_diag_field ( soc_mod_name, 'soc_olr', axes(1:2), Time, &
-               'outgoing longwave radiation', &
-               'watts/m2', missing_value=missing_value               )
-```
-
-Markdown | Less | Pretty
---- | --- | ---
-*Still* | `renders` | **nicely**
-1 | 2 | 3
-
-Set the spectral file at XX, from:
-
-1) XX
-2) XX
-3) XX
-
-Set the active gases in XX.
-
-Set a constant mixing ratio in XX.
-
-Couple a dynamic mixing ratio in XX
 
 ## Examples
 
