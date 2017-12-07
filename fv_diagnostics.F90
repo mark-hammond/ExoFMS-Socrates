@@ -51,7 +51,8 @@ contains
 ! FV dynamics specific diagnostics
 
     type(time_type), intent(in) :: Time
-    integer :: id_lonb, id_lon, id_latb, id_lat, id_phalf, id_pfull
+!DIAG Added id_soc_bins
+    integer :: id_lonb, id_lon, id_latb, id_lat, id_phalf, id_pfull, id_soc_bins
     integer :: id_bk, id_pk, id_zsurf
     character(len=8) :: mod_name = 'dynamics'
     integer, intent(out) :: axes(4)
@@ -81,6 +82,8 @@ contains
     fv_time = Time
 
     allocate ( phalf(nlev+1) )
+!DIAG Allocate socrates bin size
+    allocate ( soc_bins(20) )
 
     call get_eta_level(nlev, 1.E5, pfull, phalf, 0.01) 
 
@@ -100,10 +103,16 @@ contains
          'ref full pressure level', direction=-1, set_name=mod_name, &
          edges=id_phalf)
 
+!DIAG
+    id_soc_bins = diag_axis_init('soc_bins', soc_bins, 'cm^-1', 'n', &
+         'socrates spectral bin centers', set_name='socrates_bins')
+
     axes(1) = id_lon
     axes(2) = id_lat
     axes(3) = id_pfull
     axes(4) = id_phalf
+!DIAG
+    axes(5) = id_soc_bins
 
 !---- register static fields -------
 

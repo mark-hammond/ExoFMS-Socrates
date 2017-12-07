@@ -45,9 +45,10 @@ case(ip_solar)
   control%l_rayleigh       = .FALSE.!.TRUE.
   control%l_orog           = .FALSE.
   control%l_solvar         = .FALSE.
-  control%l_h2o            = .TRUE.!.FALSE.
-  control%l_co2            = .FALSE.
-  control%l_o3             = .TRUE.
+  control%l_h2o            = .FALSE.
+  control%l_co2            = .TRUE.!.FALSE.
+  control%l_co             = .TRUE.
+  control%l_o3             = .FALSE.!.TRUE.
   control%l_n2o            = .FALSE.!.TRUE.
   control%l_ch4            = .FALSE.!.TRUE.
   control%l_o2             = .FALSE.!.TRUE.
@@ -60,8 +61,9 @@ case(ip_infra_red)
   control%i_2stream        = ip_elsasser
   control%i_scatter_method = ip_scatter_hybrid
   control%l_ir_source_quad = .TRUE.
-  control%l_h2o            = .TRUE.
-  control%l_co2            = .FALSE.!.TRUE.
+  control%l_h2o            = .FALSE.!.TRUE.
+  control%l_co2            = .TRUE.
+  control%l_co             = .TRUE.
   control%l_o3             = .FALSE.!.TRUE.
   control%l_n2o            = .FAlSE.!.TRUE.
   control%l_ch4            = .FALSE.!.TRUE.

@@ -125,7 +125,7 @@ integer days, seconds
 
 !-----------------------------------------------------------------------
 !df 1401010
-integer :: i, j
+integer :: i, j, k
 integer :: ij, nx, tsiz, isiz
 integer :: is, ie
 !real :: eff_heat_capacity = rho_cp*1.
@@ -143,7 +143,7 @@ real, allocatable, dimension(:,:,:) :: conv_rain_profile, cond_rain_profile
 
 !-------------------------------
 !SOCRATES specific
-real :: soc_stellar_constant = 1400.0
+real :: soc_stellar_constant = 3500000.0!3000.0
 logical :: soc_tide_locked = .TRUE.
 !namelist/socrates_nml/ soc_tide_locked, soc_stellar_constant
 
@@ -313,14 +313,27 @@ id_rh = register_diag_field(mod_name, 'rh',        &
 !-----------------------------------------------------------------------
 
 !control%spectral_file = '/network/group/aopp/testvol2/plan/fms-scratch-mdh/spec_file_co2_co'
+!control_sw%spectral_file = '/network/group/aopp/testvol2/plan/fms-scratch-mdh/spec_file_co2_co'
+
+control%spectral_file = '~/spec_file_co2_co_lowres'
+control_sw%spectral_file = '~/spec_file_co2_co_lowres'
 
 !control%spectral_file = '/network/group/aopp/testvol2/plan/fms-scratch-mdh/sp_lw_300_jm2'
 
-control%spectral_file = '/network/group/aopp/testvol2/plan/fms-scratch-mdh/sp_lw_ga7'
-CALL read_spectrum(control%spectral_file,Spectrum)
+!control%spectral_file = '/network/group/aopp/testvol2/plan/fms-scratch-mdh/sp_lw_ga7'
 
-control_sw%spectral_file = '/network/group/aopp/testvol2/plan/fms-scratch-mdh/sp_sw_ga7'
-CALL read_spectrum(control_sw%spectral_file,Spectrum_sw)
+!control%spectral_file = '/network/group/aopp/planetary/RTP001_HAMMOND_55CNCE-C/spec_file_co2_co_lowres'
+!control_sw%spectral_file = '/network/group/aopp/planetary/RTP001_HAMMOND_55CNCE-C/spec_file_co2_co_lowres'
+CALL read_spectrum(control%spectral_file,spectrum)
+
+!control_sw%spectral_file = '/network/group/aopp/testvol2/plan/fms-scratch-mdh/sp_sw_ga7'
+CALL read_spectrum(control_sw%spectral_file,spectrum_sw)
+
+!CALL read_control(control,spectrum)
+!CALL compress_spectrum(control,spectrum)
+
+!CALL read_control(control_sw,spectrum_sw)
+!CALL compress_spectrum(control_sw,spectrum_sw)
 
 ! Read Socrates namelist
 !unit = open_file ('input.nml', action='read')
@@ -494,6 +507,18 @@ delta_t = dt_atmos
        cp = cp_air * (1 - qg_tmp) + cp_vapor * qg_tmp
 
 
+!-----------
+! Socrates interface
+! Retrieve output_heating_rate, and downward surface SW and LW fluxes
+CALL socrates_interface(Time, spectrum_lw, spectrum_sw,     &
+     tg_tmp, t_surf, p_full, p_half, n_profile, n_layer     &
+     fms_heating_rate, net_surf_sw_down, surf_lw_down )
+
+tg_tmp
+
+tg_tmp = tg_tmp + fms_heating_rate* delta_t
+!-----------
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !SOCRATES
@@ -501,29 +526,36 @@ delta_t = dt_atmos
 control%isolir = 2
 
 !Read in control values
+
+!control%spectral_file = '~/spec_file_co2_co_lowres'
+!control_sw%spectral_file = '~/spec_file_co2_co_lowres'
+
+!CALL read_spectrum(control%spectral_file,spectrum)
 CALL read_control(control,spectrum)
-CALL compress_spectrum(control,spectrum)
+!CALL compress_spectrum(control,spectrum)
 
 !Set input T, p, p_level, and mixing ratio profiles
 input_t = RESHAPE(tg_tmp, (/432, 40/))
 input_p = RESHAPE(p_full, (/432, 40/))
 input_p_level = RESHAPE(p_half, (/432, 41/))
-input_mixing_ratio = 5.E-1
-input_o3_mixing_ratio = 1.E-7
+input_mixing_ratio = 1.E-1
+input_o3_mixing_ratio = 1.E-1
 
+!PRINT*, input_p(1,:)
 !Optional extra layers for radiative balance
-control%l_extra_top = .TRUE.
+!control%l_extra_top = .TRUE.
 !control_sw%l_extra_top = .TRUE.
-
 
 !Set input t_level by scaling t - NEEDS TO CHANGE!
 DO i = 1, 3
       DO j = 1, 144
-            input_t_level(j + 144*(i-1),41) = 1.01*input_t(j+144*(i-1),40)
-            input_t_level(j + 144*(i-1),0:40) = 0.99*input_t(j+144*(i-1),0:40)
+            DO k = 0,nlev
+                 input_t_level(j + 144*(i-1),k) = 0.5*(input_t(j+144*(i-1),k+1)+input_t(j+144*(i-1),k))
+            END DO
+            input_t_level(j+144*(i-1),40) = input_t(j+144*(i-1),40) + input_t(j+144*(i-1),40) - input_t_level(j+144*(i-1),39) 
+            input_t_level(j+144*(i-1),0) = input_t(j+144*(i-1),1) - (input_t_level(j+144*(i-1),1) - input_t(j+144*(i-1),1))
       END DO
 END DO
-
 
 !Default parameters
 input_cos_zenith_angle = 0.7 
@@ -531,15 +563,20 @@ input_cos_zenith_angle = 0.7
 input_orog_corr = 0.0
 input_layer_heat_capacity = 29.07
 
-
 !Set tide-locked flux - should be set by namelist eventually!
 fms_stellar_flux = soc_stellar_constant*cos(rlat)*cos(rlon)
 WHERE (fms_stellar_flux < 0.0) fms_stellar_flux = 0.0
 input_solar_irrad = RESHAPE(fms_stellar_flux, (/432/))
 
+!KLUDGE
+!!where (input_solar_irrad(:) < 1.e5)
+!!   input_solar_irrad(:) = 1.e5
+!!endwhere
+
 
 !Set input surface T
 input_t_surf = RESHAPE(t_surf, (/432/))
+
 
 !Start of a rough T-dependent albedo
 !bound%rho_alb(:,:,:) = 0.07
@@ -548,14 +585,15 @@ input_t_surf = RESHAPE(t_surf, (/432/))
 !Set input dry mass, density, and heat capacity profiles
 DO i=n_layer, 1, -1
       DO l=1, n_profile
-        input_d_mass(l, i) = (input_p_level(l, i)-input_p_level(l, i-1))/9.8
-        input_density(l, i) = input_p(l, i)/(8.31*input_t(l, i))!1000.!atm%p(l ,i) / 1000.
+        input_d_mass(l, i) = (input_p_level(l, i)-input_p_level(l, i-1))/23.0
+        input_density(l, i) = input_p(l, i)/(8.31*input_t(l, i))!1000.!atm%p(l ,i) / 1000
+!KLUDGE
         input_layer_heat_capacity(l,i) = input_d_mass(l,i)*1005.0
       END DO
 END DO
 
 
-CALL socrates_calc(control, spectrum,                                          &
+CALL socrates_calc(Time, control, spectrum,                                          &
   n_profile, n_layer, input_n_cloud_layer, input_n_aer_mode,                   &
   input_cld_subcol_gen, input_cld_subcol_req,                                  &
   input_p, input_t, input_t_level, input_d_mass, input_density,                &
@@ -569,24 +607,29 @@ CALL socrates_calc(control, spectrum,                                          &
 !output_flux_net(:,1) =  soc_flux_down(:,40)!soc_flux_up(1,:) - soc_flux_down(1,:)
 
 !A
-!surf_lw_down = RESHAPE(soc_flux_down(:,40) , (/144,3/))
+surf_lw_down = RESHAPE(soc_flux_down(:,40) , (/144,3/))
 
 !PRINT*, 'ook'
 !PRINT*, soc_flux_up(1,:)
 
+
 !output_flux_net(1,:) = soc_flux_up(1,:) - soc_flux_down(1,:)
 
 !A-PROBLEM HERE!
-output_heating_rate = soc_heating_rate(:,:)
-!PRINT*, SHAPE(output_heating_rate)
+!soc_heating_rate(:,:10)=0.0
+output_heating_rate =soc_heating_rate(:,:)
+
+!PRINT*, 'ook'
+!PRINT*, soc_heating_rate(1,:)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !Set SW
 control_sw%isolir = 1
+!CALL read_spectrum(control_sw%spectral_file,spectrum_sw)
 CALL read_control(control_sw, spectrum_sw)
-CALL compress_spectrum(control_sw,spectrum_sw)
+!CALL compress_spectrum(control_sw,spectrum_sw)
 
-CALL socrates_calc(control_sw, spectrum_sw,                                          &
+CALL socrates_calc(Time, control_sw, spectrum_sw,                                          &
   n_profile, n_layer, input_n_cloud_layer, input_n_aer_mode,                   &
   input_cld_subcol_gen, input_cld_subcol_req,                                  &
   input_p, input_t, input_t_level, input_d_mass, input_density,                &
@@ -599,32 +642,43 @@ CALL socrates_calc(control_sw, spectrum_sw,                                     
 !output_flux_net(:,1) = output_flux_net(:,1) + soc_flux_down(:,40)!soc_flux_up(1,:) - soc_flux_down(1,:)
 
 !A
-net_surf_sw_down = RESHAPE(soc_flux_down(:,40) , (/144,3/))
-!A
-output_heating_rate = output_heating_rate + soc_heating_rate
+net_surf_sw_down = RESHAPE(soc_flux_down(:,0) , (/144,3/))
+!net_surf_sw_down = fms_stellar_flux(:,:)
 
-                                    
+!A - 
+output_heating_rate = output_heating_rate + soc_heating_rate*0.0
+output_heating_rate(:,:6) = 0.0
 
-!       dt_tg(:,:,:) = dt_tg(:,:,:) *grav / cp(:,:,:) &
-!        / (p_half(:,:,2:n+1) - p_half(:,:,1:n))
-!PRINT*, SHAPE(RESHAPE(output_heating_rate, (/432, 3, 40/)))
 
-!Test surface mixing term              
-!output_heating_rate(:,40) = output_heating_rate(:,40)! + (input_t_surf(:) - input_t(:,40))/2000000.0
+!PRINT*, 'ook'
+!PRINT*, output_heating_rate(:144,30)
 
-!PRINT*, output_heating_rate(1,:)                      
-!output_heating_rate( 
-       tg_tmp = tg_tmp + RESHAPE(output_heating_rate, (/144, 3, 40/)) * delta_t
-!PRINT*, output_heating_rate(1,:)
+!PRINT*, 'ook'
+!PRINT*, soc_flux_down(1,:)
+
+!PRINT*, 'ook'
+!PRINT*, input_t(1,:)
+
+!PRINT*, 'ook'
+!PRINT*, input_t_surf(1)
+ 
+tg_tmp = tg_tmp + RESHAPE(output_heating_rate, (/144, 3, 40/)) * delta_t*0.01
+
+
+
+omga=omga*0.0
+u=u*0.0
+v=v*0.0
+
+!PRINT*, 'ook'
+!PRINT*, tg_tmp(:,1,20)
 
 !KLUDGE - FIX!
-WHERE (tg_tmp < 130.0) tg_tmp = 130.0
-tg_tmp(:,:,1) = tg_tmp(:,:,2)
+!tg_tmp(:,:,1) = tg_tmp(:,:,2)
+!WHERE (tg_tmp < 1300.0) tg_tmp = 1300.0
+!tg_tmp(:,:,:5) = 200.0
 
-
-!       dt_tg = 0. 
-!t_surf = t_surf + (RESHAPE(soc_flux_down(:,41), (/144,3/)) - 5.67e-08 * (t_surf)**4) / 30.0 !+ (RESHAPE(input_t_level(:,41), (/144,3/)) - t_surf) * 0.1
-
+!------------------------------------------------------
 
  
        call surface_flux(       &
@@ -671,7 +725,6 @@ tg_tmp(:,:,1) = tg_tmp(:,:,2)
 tg_tmp(:,:,n) = tg_tmp(:,:,n) + flux_t * delta_t &
            * grav / (p_half(:,:,n+1) - p_half(:,:,n)) &
            / cp(:,:,n)
-
 
 
 !dt_ug(:, :, n) = - ug(:,:,n,previous) / 86400.  
@@ -770,15 +823,20 @@ do ij=1,tsiz
     !prev is actually after
     ! update surface temperature and pressure
 
+!KLUDGE - flux_t off
     delta_t_surf = (surf_lw_down(i,j) + net_surf_sw_down(i,j)  &
                      - flux_t(i,j) - flux_r(i,j) ) &
                     * delta_t / rho_cp / mld !eff_heat_capacity
-
+!PRINT*, '-----------------------'
+!PRINT*, 't_surf'
+!PRINT*, t_surf(i,j)
+!PRINT*, 'lw'
+!    delta_t_surf = (surf_lw_down(i,j) + net_surf_sw_down(i,j))  &
+!                    * delta_t / rho_cp / mld !eff_heat_capacity
 
 !    delta_t_surf = (surf_lw_down(i,j) + net_surf_sw_down(i,j)-0.5*5.67e-8*t_surf(i,j)**4) &
 !                   * delta_t / 200000.0
-
-    t_surf(i,j) = t_surf(i,j) + delta_t_surf
+    t_surf(i,j) = t_surf(i,j) + delta_t_surf*0.0001
     !correct the energy imbalance due to vertical interpolation
 
     tg_tmp(i,j,:) = t_after

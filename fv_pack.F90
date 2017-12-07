@@ -270,7 +270,7 @@ module fv_pack
 !-----------------------------------------------------------------------
 !   real, allocatable :: pesouth(:,:)  ! "pe at the south" for SPMD
    logical :: u_ghosted = .false.         ! u-wind is ghosted at the first lat to the N
-   real, parameter::ptop_min = 1.E-6  ! minimum pressure (pa) at model top to avoid
+   real, parameter::ptop_min = 1.E-5  ! minimum pressure (pa) at model top to avoid
                                           ! floating point exception; this is not needed
                                           ! if model top is not at zero
    real, parameter :: too_big = 1.E30      ! use this for missing values

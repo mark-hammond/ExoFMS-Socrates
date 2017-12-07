@@ -577,8 +577,8 @@
   !call escomp(t0, es)
   !print *,'saturation vapor pressure !!!', es
 
-  real(r8) :: tsini = 300.
-  real(r8) :: pdini = 1e5   !dry partial pressure
+  real(r8) :: tsini = 1700.
+  real(r8) :: pdini = 5e5   !dry partial pressure
 
   real(r8), dimension(401) :: t_initial, q_initial, lnp_initial
   real(r8) :: psini, tslat
@@ -750,7 +750,7 @@
          call interp(size(lnp_initial), lnp_initial, q_initial, size(qg_ini), &
             lnpfull_ini, qg_ini)
          do k = 1, nlev
-            if (tg_ini(k) .le. 150.) tg_ini(k) = 150.
+            if (tg_ini(k) .le. 1300.) tg_ini(k) = 1300.
          end do
          do i=1,nlon
             !tg_ini = tg_ini *(  (1- ABS(nlon-72)  / 288))

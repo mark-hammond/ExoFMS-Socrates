@@ -60,12 +60,12 @@ real :: realnumber
 !   (kg/m^3)*(cal/kg/deg C)(joules/cal) = (joules/m^3/deg C)
 ! </DATA>
 
-real, public, parameter :: RADIUS = 6371.0e3! *0.772
-real, public, parameter :: OMEGA  =7.292e-5/5.0!1.0!4.05! /26.5122 !/365.0
-real, public, parameter :: GRAV   = 9.81!6.941! * 0.1309875
-real, public, parameter :: RDGAS  = 287.00421!/100. !287.00421 
+real, public, parameter :: RADIUS = 2.0*6371.0e3! *0.772
+real, public, parameter :: OMEGA  =7.292e-5/1.0!4.05! /26.5122 !/365.0
+real, public, parameter :: GRAV   = 23.0!9.81!6.941! * 0.1309875
+real, public, parameter :: RDGAS  = 2850.0!287.00421!/100. !287.00421 
 real, public, parameter :: KAPPA  = 0.28586 !0.2858607676 
-real, public, parameter :: CP_AIR = 1004.0!/100. !1004.0 !RDGAS/KAPPA 
+real, public, parameter :: CP_AIR = 10000.0!1004.0!/100. !1004.0 !RDGAS/KAPPA 
 real, public, parameter :: CP_OCEAN = 3989.24495292815
 real, public, parameter :: RHO0    = 1.035e3
 real, public, parameter :: RHO0R   = 1.0/RHO0
