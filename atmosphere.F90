@@ -91,6 +91,7 @@ USE soc_constants_mod
 USE read_control_mod
 USE socrates_calc_mod
 USE socrates_interface_mod
+USE socrates_hires_interface_mod
 USE compress_spectrum_mod
 USE def_spectrum
 USE def_dimen,   ONLY: StrDim
@@ -751,6 +752,13 @@ if(id_rh > 0)     used = send_data(id_rh, rh, Time)
        is = 1 + isiz * mod(ij-1, nx)
        ie = is + isiz - 1
        q(is:ie,j,nlev,2) = t_surf(is:ie,j)
+
+call socrates_hires_init(1, nlon, beglat, endlat, nlev, axes, Time,rlat(:,:))
+
+call socrates_hires_interface(Time, rlat, rlon,     &
+     tg_tmp, t_surf, p_full, p_half, n_profile, n_layer,     &
+     output_heating_rate, net_surf_sw_down, surf_lw_down, fms_stellar_flux )
+
     end do
 
 !----- initialize domains for writing global physics data -----
