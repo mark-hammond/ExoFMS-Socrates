@@ -14,63 +14,9 @@ module socrates_calc_mod
 implicit none
 
 !----------
-!DIAG ExoFMS diagnostic fields
-
-integer :: id_soc_olr, id_soc_olr_spectrum_lw, id_soc_surf_spectrum_sw
-integer :: id_soc_heating_sw, id_soc_heating_lw, id_soc_heating_rate
-
-character(len=10), parameter :: soc_mod_name = 'socrates'
-
-real :: missing_value = -999
-!----------
 
 contains
 
-! Initialise ExoFMS diagnostics
-
-subroutine socrates_init(is, ie, js, je, num_levels, axes, Time, lat)
-
-
-!-------------------------------------------------------------------------------------
-integer, intent(in), dimension(4) :: axes
-type(time_type), intent(in)       :: Time
-integer, intent(in)               :: is, ie, js, je, num_levels
-real, intent(in) , dimension(:,:)   :: lat
-!-------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------
-!------------ initialize diagnostic fields ---------------
-    id_soc_olr = &
-    register_diag_field ( soc_mod_name, 'soc_olr', axes(1:2), Time, &
-               'outgoing longwave radiation', &
-               'watts/m2', missing_value=missing_value               )
-
-    id_soc_olr_spectrum_lw = &
-    register_diag_field ( soc_mod_name, 'soc_olr_spectrum_lw',(/ axes(1:2), axes(5)/) , Time, &
-               'socrates substellar LW OLR spectrum', &
-               'watts/m2', missing_value=missing_value               )
-
-    id_soc_surf_spectrum_sw = &
-    register_diag_field ( soc_mod_name, 'soc_surf_spectrum_sw',(/ axes(1:2), axes(5)/) , Time, &
-               'socrates substellar SW surface spectrum', &
-               'watts/m2', missing_value=missing_value               )
-
-    id_soc_heating_lw = &
-    register_diag_field ( soc_mod_name, 'soc_heating_lw', axes(1:3), Time, &
-               'socrates LW heating rate', &
-               'J/s', missing_value=missing_value               )
-
-    id_soc_heating_sw = &
-    register_diag_field ( soc_mod_name, 'soc_heating_sw', axes(1:3), Time, &
-               'socrates SW heating rate', &
-               'J/s', missing_value=missing_value               )
-
-    id_soc_heating_rate = &
-    register_diag_field ( soc_mod_name, 'soc_heating_rate', axes(1:3), Time, &
-               'socrates total heating rate', &
-               'J/s', missing_value=missing_value               )
-return
-end subroutine socrates_init
 ! ==================================================================================
 
 
@@ -213,22 +159,13 @@ call set_bound(control, dimen, spectrum, bound, n_profile,                     &
   t_rad_surf, cos_zenith_angle, solar_irrad, orog_corr,                        &
   l_planet_grey_surface, planet_albedo, planet_emissivity)
 
-call set_cld(control, dimen, spectrum, cld, n_profile)
+!call set_cld(control, dimen, spectrum, cld, n_profile)
 
-call set_aer(control, dimen, spectrum, aer, n_profile)
+!call set_aer(control, dimen, spectrum, aer, n_profile)
 
 
 ! DEPENDS ON: radiance_calc
 call radiance_calc(control, dimen, spectrum, atm, cld, aer, bound, radout)
-
-
-if (control%isolir == 10) then
-PRINT*, 'ook'
-do i=1,20
-PRINT*, radout%flux_down_band(1,39,i)
-PRINT*, ','
-end do
-end if
 
 
 
@@ -254,17 +191,17 @@ end do
 !DIAG
 
 ! Send SW diagnostics
-if ( control%isolir == 1 ) then
-     used = send_data ( id_soc_surf_spectrum_sw, RESHAPE(radout%flux_down_band(:,40,:), (/144,3,20/)), Time_diag)
-     used = send_data ( id_soc_heating_sw, RESHAPE(heating_rate, (/144,3,40/)), Time_diag)
-endif
+!if ( control%isolir == 1 ) then
+!     used = send_data ( id_soc_surf_spectrum_sw, RESHAPE(radout%flux_down_band(:,40,:), (/144,3,20/)), Time_diag)
+!     used = send_data ( id_soc_heating_sw, RESHAPE(heating_rate, (/144,3,40/)), Time_diag)
+!endif
 
 ! Send LW diagnosticis
-if ( control%isolir == 2 ) then
-     used = send_data ( id_soc_olr, RESHAPE(flux_up(:,0), (/144,3/)), Time_diag)
-     used = send_data ( id_soc_olr_spectrum_lw, RESHAPE(radout%flux_up_band(:,0,:), (/144,3,20/)), Time_diag)
-     used = send_data ( id_soc_heating_lw, RESHAPE(heating_rate, (/144,3,40/)), Time_diag)
-endif
+!if ( control%isolir == 2 ) then
+!     used = send_data ( id_soc_olr, RESHAPE(flux_up(:,0), (/144,3/)), Time_diag)
+!     used = send_data ( id_soc_olr_spectrum_lw, RESHAPE(radout%flux_up_band(:,0,:), (/144,3,20/)), Time_diag)
+!     used = send_data ( id_soc_heating_lw, RESHAPE(heating_rate, (/144,3,40/)), Time_diag)
+!endif
 
 call deallocate_out(radout)
 call deallocate_aer_prsc(aer)

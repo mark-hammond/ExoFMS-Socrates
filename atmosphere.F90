@@ -90,6 +90,7 @@ USE realtype_rd
 USE soc_constants_mod
 USE read_control_mod
 USE socrates_calc_mod
+USE socrates_interface_mod
 USE compress_spectrum_mod
 USE def_spectrum
 USE def_dimen,   ONLY: StrDim
@@ -143,20 +144,22 @@ real, allocatable, dimension(:,:,:) :: conv_rain_profile, cond_rain_profile
 
 !-------------------------------
 !SOCRATES specific
-real :: soc_stellar_constant = 3500000.0!3000.0
-logical :: soc_tide_locked = .TRUE.
-!namelist/socrates_nml/ soc_tide_locked, soc_stellar_constant
+real :: soc_stellar_constant
+logical :: soc_tide_locked
+namelist/socrates_nml/ soc_tide_locked, soc_stellar_constant
 
 ! Dimensions:
   TYPE(StrDim) :: dimen
 
 ! Control options:
-  TYPE(StrCtrl) :: control
-  TYPE(StrCtrl) :: control_sw
+!  TYPE(StrCtrl) :: control
+!  TYPE(StrCtrl) :: control_lw
+!  TYPE(StrCtrl) :: control_sw
 
 ! Spectral information:
-  TYPE(StrSpecData) :: spectrum
-  TYPE(StrSpecData) :: spectrum_sw
+!  TYPE(StrSpecData) :: spectrum
+!  TYPE(StrSpecData) :: spectrum_lw
+!  TYPE(StrSpecData) :: spectrum_sw
 
 ! Atmospheric input:
   TYPE(StrAtm) :: atm_input
@@ -308,32 +311,19 @@ id_rh = register_diag_field(mod_name, 'rh',        &
      axes(1:3), Time, 'Relative humidity','%')
 
 !-----------------------------------------------------------------------
-!call radiation_init(1, nlon, beglat, endlat, nlev, axes, Time,rlat(:,:))
 
-!-----------------------------------------------------------------------
+call socrates_init(1, nlon, beglat, endlat, nlev, axes, Time,rlat(:,:))
 
 !control%spectral_file = '/network/group/aopp/testvol2/plan/fms-scratch-mdh/spec_file_co2_co'
 !control_sw%spectral_file = '/network/group/aopp/testvol2/plan/fms-scratch-mdh/spec_file_co2_co'
 
-control%spectral_file = '~/spec_file_co2_co_lowres'
-control_sw%spectral_file = '~/spec_file_co2_co_lowres'
+!control_lw%spectral_file = '~/spec_file_co2_co_lowres'
+!control_sw%spectral_file = '~/spec_file_co2_co_lowres'
 
-!control%spectral_file = '/network/group/aopp/testvol2/plan/fms-scratch-mdh/sp_lw_300_jm2'
+!CALL read_spectrum(control_lw%spectral_file,spectrum_lw)
 
-!control%spectral_file = '/network/group/aopp/testvol2/plan/fms-scratch-mdh/sp_lw_ga7'
+!CALL read_spectrum(control_sw%spectral_file,spectrum_sw)
 
-!control%spectral_file = '/network/group/aopp/planetary/RTP001_HAMMOND_55CNCE-C/spec_file_co2_co_lowres'
-!control_sw%spectral_file = '/network/group/aopp/planetary/RTP001_HAMMOND_55CNCE-C/spec_file_co2_co_lowres'
-CALL read_spectrum(control%spectral_file,spectrum)
-
-!control_sw%spectral_file = '/network/group/aopp/testvol2/plan/fms-scratch-mdh/sp_sw_ga7'
-CALL read_spectrum(control_sw%spectral_file,spectrum_sw)
-
-!CALL read_control(control,spectrum)
-!CALL compress_spectrum(control,spectrum)
-
-!CALL read_control(control_sw,spectrum_sw)
-!CALL compress_spectrum(control_sw,spectrum_sw)
 
 ! Read Socrates namelist
 !unit = open_file ('input.nml', action='read')
@@ -508,175 +498,31 @@ delta_t = dt_atmos
 
 
 !-----------
-! Socrates interface
+! Socrates interface - qwe
+
+!Set tide-locked flux - should be set by namelist eventually!
+soc_stellar_constant = 3500000.0
+fms_stellar_flux = soc_stellar_constant*cos(rlat)*cos(rlon)
+WHERE (fms_stellar_flux < 0.0) fms_stellar_flux = 0.0
+
 ! Retrieve output_heating_rate, and downward surface SW and LW fluxes
-CALL socrates_interface(Time, spectrum_lw, spectrum_sw,     &
-     tg_tmp, t_surf, p_full, p_half, n_profile, n_layer     &
-     fms_heating_rate, net_surf_sw_down, surf_lw_down )
+CALL socrates_interface(Time, rlat, rlon,     &
+     tg_tmp, t_surf, p_full, p_half, n_profile, n_layer,     &
+     output_heating_rate, net_surf_sw_down, surf_lw_down, fms_stellar_flux )
 
-tg_tmp
+output_heating_rate(:,:5) = 0.0
+tg_tmp = tg_tmp + RESHAPE(output_heating_rate, (/144, 3, 40/)) * delta_t*0.1
 
-tg_tmp = tg_tmp + fms_heating_rate* delta_t
+! NB net_surf_sw_down and surf_lw_down have now been set
+! THey are used below
 !-----------
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!SOCRATES
-!Set to LW
-control%isolir = 2
 
-!Read in control values
+!omga=omga*0.0
+!u=u*0.0
+!v=v*0.0
 
-!control%spectral_file = '~/spec_file_co2_co_lowres'
-!control_sw%spectral_file = '~/spec_file_co2_co_lowres'
-
-!CALL read_spectrum(control%spectral_file,spectrum)
-CALL read_control(control,spectrum)
-!CALL compress_spectrum(control,spectrum)
-
-!Set input T, p, p_level, and mixing ratio profiles
-input_t = RESHAPE(tg_tmp, (/432, 40/))
-input_p = RESHAPE(p_full, (/432, 40/))
-input_p_level = RESHAPE(p_half, (/432, 41/))
-input_mixing_ratio = 1.E-1
-input_o3_mixing_ratio = 1.E-1
-
-!PRINT*, input_p(1,:)
-!Optional extra layers for radiative balance
-!control%l_extra_top = .TRUE.
-!control_sw%l_extra_top = .TRUE.
-
-!Set input t_level by scaling t - NEEDS TO CHANGE!
-DO i = 1, 3
-      DO j = 1, 144
-            DO k = 0,nlev
-                 input_t_level(j + 144*(i-1),k) = 0.5*(input_t(j+144*(i-1),k+1)+input_t(j+144*(i-1),k))
-            END DO
-            input_t_level(j+144*(i-1),40) = input_t(j+144*(i-1),40) + input_t(j+144*(i-1),40) - input_t_level(j+144*(i-1),39) 
-            input_t_level(j+144*(i-1),0) = input_t(j+144*(i-1),1) - (input_t_level(j+144*(i-1),1) - input_t(j+144*(i-1),1))
-      END DO
-END DO
-
-!Default parameters
-input_cos_zenith_angle = 0.7 
-!input_solar_irrad = 1370.0
-input_orog_corr = 0.0
-input_layer_heat_capacity = 29.07
-
-!Set tide-locked flux - should be set by namelist eventually!
-fms_stellar_flux = soc_stellar_constant*cos(rlat)*cos(rlon)
-WHERE (fms_stellar_flux < 0.0) fms_stellar_flux = 0.0
-input_solar_irrad = RESHAPE(fms_stellar_flux, (/432/))
-
-!KLUDGE
-!!where (input_solar_irrad(:) < 1.e5)
-!!   input_solar_irrad(:) = 1.e5
-!!endwhere
-
-
-!Set input surface T
-input_t_surf = RESHAPE(t_surf, (/432/))
-
-
-!Start of a rough T-dependent albedo
-!bound%rho_alb(:,:,:) = 0.07
-!WHERE (t_surf < 273.0) bound%rho_alb(:,:,:) = 0.7
-
-!Set input dry mass, density, and heat capacity profiles
-DO i=n_layer, 1, -1
-      DO l=1, n_profile
-        input_d_mass(l, i) = (input_p_level(l, i)-input_p_level(l, i-1))/23.0
-        input_density(l, i) = input_p(l, i)/(8.31*input_t(l, i))!1000.!atm%p(l ,i) / 1000
-!KLUDGE
-        input_layer_heat_capacity(l,i) = input_d_mass(l,i)*1005.0
-      END DO
-END DO
-
-
-CALL socrates_calc(Time, control, spectrum,                                          &
-  n_profile, n_layer, input_n_cloud_layer, input_n_aer_mode,                   &
-  input_cld_subcol_gen, input_cld_subcol_req,                                  &
-  input_p, input_t, input_t_level, input_d_mass, input_density,                &
-  input_mixing_ratio, input_o3_mixing_ratio,                                      &
-  input_t_surf, input_cos_zenith_angle, input_solar_irrad, input_orog_corr,    &
-  input_l_planet_grey_surface, input_planet_albedo, input_planet_emissivity,   &
-  input_layer_heat_capacity,                                                   &
-  soc_flux_direct, soc_flux_down, soc_flux_up, soc_heating_rate)
-
-
-!output_flux_net(:,1) =  soc_flux_down(:,40)!soc_flux_up(1,:) - soc_flux_down(1,:)
-
-!A
-surf_lw_down = RESHAPE(soc_flux_down(:,40) , (/144,3/))
-
-!PRINT*, 'ook'
-!PRINT*, soc_flux_up(1,:)
-
-
-!output_flux_net(1,:) = soc_flux_up(1,:) - soc_flux_down(1,:)
-
-!A-PROBLEM HERE!
-!soc_heating_rate(:,:10)=0.0
-output_heating_rate =soc_heating_rate(:,:)
-
-!PRINT*, 'ook'
-!PRINT*, soc_heating_rate(1,:)
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!Set SW
-control_sw%isolir = 1
-!CALL read_spectrum(control_sw%spectral_file,spectrum_sw)
-CALL read_control(control_sw, spectrum_sw)
-!CALL compress_spectrum(control_sw,spectrum_sw)
-
-CALL socrates_calc(Time, control_sw, spectrum_sw,                                          &
-  n_profile, n_layer, input_n_cloud_layer, input_n_aer_mode,                   &
-  input_cld_subcol_gen, input_cld_subcol_req,                                  &
-  input_p, input_t, input_t_level, input_d_mass, input_density,                &
-  input_mixing_ratio, input_o3_mixing_ratio,                                      &
-  input_t_surf, input_cos_zenith_angle, input_solar_irrad, input_orog_corr,    &
-  input_l_planet_grey_surface, input_planet_albedo, input_planet_emissivity,   &
-  input_layer_heat_capacity,                                                   &
-  soc_flux_direct, soc_flux_down, soc_flux_up, soc_heating_rate)
-
-!output_flux_net(:,1) = output_flux_net(:,1) + soc_flux_down(:,40)!soc_flux_up(1,:) - soc_flux_down(1,:)
-
-!A
-net_surf_sw_down = RESHAPE(soc_flux_down(:,0) , (/144,3/))
-!net_surf_sw_down = fms_stellar_flux(:,:)
-
-!A - 
-output_heating_rate = output_heating_rate + soc_heating_rate*0.0
-output_heating_rate(:,:6) = 0.0
-
-
-!PRINT*, 'ook'
-!PRINT*, output_heating_rate(:144,30)
-
-!PRINT*, 'ook'
-!PRINT*, soc_flux_down(1,:)
-
-!PRINT*, 'ook'
-!PRINT*, input_t(1,:)
-
-!PRINT*, 'ook'
-!PRINT*, input_t_surf(1)
- 
-tg_tmp = tg_tmp + RESHAPE(output_heating_rate, (/144, 3, 40/)) * delta_t*0.01
-
-
-
-omga=omga*0.0
-u=u*0.0
-v=v*0.0
-
-!PRINT*, 'ook'
-!PRINT*, tg_tmp(:,1,20)
-
-!KLUDGE - FIX!
-!tg_tmp(:,:,1) = tg_tmp(:,:,2)
-!WHERE (tg_tmp < 1300.0) tg_tmp = 1300.0
-!tg_tmp(:,:,:5) = 200.0
 
 !------------------------------------------------------
 
@@ -754,42 +600,6 @@ end do
       dt_ug(:,:,1:5) = -u_tmp(:,:,1:5) / 86400. /10.
       dt_vg(:,:,1:5) = -v_tmp(:,:,1:5) / 86400. /10.
 
-!!vertical diffusion: constant km, df 14/11/17
-!vcoeff =  .5 !m**2/sec
-!do k=2,nlev-1
-!       diff_u(:,:,k) = (u_tmp(:,:,k+1)-u_tmp(:,:,k-1))/(p_full(:,:,k+1)-p_full(:,:,k-1))* &
-!                       (p_full(:,:,k)/rdgas/tg_tmp(:,:,k)/(1.+0.608*qg_tmp(:,:,k)))**2    &
-!                       *grav**2 *vcoeff
-!       diff_v(:,:,k) = (v_tmp(:,:,k+1)-v_tmp(:,:,k-1))/(p_full(:,:,k+1)-p_full(:,:,k-1))* &
-!                       (p_full(:,:,k)/rdgas/tg_tmp(:,:,k)/(1.+0.608*qg_tmp(:,:,k)))**2    &
-!                       *grav**2 *vcoeff
-!end do
-!       k=nlev
-!       diff_u(:,:,k) = (0.-u_tmp(:,:,k))/(p_half(:,:,k+1)-p_full(:,:,k))* &
-!                       (p_full(:,:,k)/rdgas/tg_tmp(:,:,k)/(1.+0.608*qg_tmp(:,:,k)))**2 &
-!                       *grav**2 *vcoeff
-!       diff_v(:,:,k) = (0.-v_tmp(:,:,k))/(p_half(:,:,k+1)-p_full(:,:,k))* &
-!                       (p_full(:,:,k)/rdgas/tg_tmp(:,:,k)/(1.+0.608*qg_tmp(:,:,k)))**2 &
-!                       *grav**2 *vcoeff
-!do k=1,nlev-1
-!   sigma(:,:) = p_full(:,:,k) / psg_tmp(:,:)
-!   where (sigma(:,:) > 0.7)
-!!      dt_ug(:,:,k) = u_tmp(:,:,k) *vcoeff *(sigma(:,:) - 0.7)
-!!      dt_vg(:,:,k) = v_tmp(:,:,k) *vcoeff *(sigma(:,:) - 0.7)
-!       dt_ug(:,:,k)  = (diff_u(:,:,k+1)-diff_u(:,:,k-1))/(p_full(:,:,k+1)-p_full(:,:,k-1))
-!       dt_vg(:,:,k)  = (diff_v(:,:,k+1)-diff_v(:,:,k-1))/(p_full(:,:,k+1)-p_full(:,:,k-1))
-!    elsewhere (p_full(:,:,k) < 1e2)
-!      dt_ug(:,:,k) = -u_tmp(:,:,k) / 86400.
-!      dt_vg(:,:,k) = -v_tmp(:,:,k) / 86400.
-!   elsewhere
-!      dt_ug(:,:,k) = 0.
-!      dt_vg(:,:,k) = 0.
-!   endwhere
-!end do
-!       k=nlev
-!       dt_ug(:,:,k)  = (diff_u(:,:,k)-diff_u(:,:,k-1))/(p_full(:,:,k)-p_full(:,:,k-1))
-!       dt_vg(:,:,k)  = (diff_v(:,:,k)-diff_v(:,:,k-1))/(p_full(:,:,k)-p_full(:,:,k-1))
-!
 
 
 tg_tmp = tg_tmp - delta_t / cp * &
@@ -836,7 +646,7 @@ do ij=1,tsiz
 
 !    delta_t_surf = (surf_lw_down(i,j) + net_surf_sw_down(i,j)-0.5*5.67e-8*t_surf(i,j)**4) &
 !                   * delta_t / 200000.0
-    t_surf(i,j) = t_surf(i,j) + delta_t_surf*0.0001
+    t_surf(i,j) = t_surf(i,j) + delta_t_surf*0.1
     !correct the energy imbalance due to vertical interpolation
 
     tg_tmp(i,j,:) = t_after
@@ -865,76 +675,6 @@ end do
 
 
       do j=beglat,endlat
-!----------------------------------------------------------------------
-!high latitude filter
-!         if ((j==1) .or. (j==mlat-2)) then ! .or. (j==4) .or. (j==mlat-5)) then
-!                 tm(:,:) = sum(pt(:,j:j+2,:), dim=2) / 3.
-!                 qm(:,:) = sum( q(:,j:j+2,:, 1), dim=2) / 3.
-!                 um(:,:) = sum(ua(:,j:j+2,:), dim=2) / 3.
-!                 vm(:,:) = sum(va(:,j:j+2,:), dim=2) / 3.
-!                 psm(:)  = sum(ps(:,j:j+2), dim=2) /3. 
-!                 tsm(:)  = sum(t_surf(:,j:j+2), dim=2) /3. 
-!                 do k=1,3
-!                    pt(:,j+k-1,:) = tm(:,:) *1.
-!                    q(:,j+k-1,:,1)= qm(:,:)*1.
-!                    ua(:,j+k-1,:) = um(:,:) *1.
-!                    va(:,j+k-1,:) = vm(:,:) *1.
-!                    ps(:,j+k-1)   = psm(:) *1.
-!                    t_surf(:,j+k-1)   = tsm(:) *1.
-!                 end do
-!         end if
-!----------------------------------------------------------------------
-!high latitude filter
-!         if ((j==2) .or. (j==mlat-1) ) then !  .or. (j==5) .or. (j==mlat-4)) then
-!         if (((j>1) .and. (j<6)) .or. ((j>mlat-5) .and. (j<mlat))) then
-!                    pt(:,j,:) =sum(pt(:,j-1:j+1,:), dim=2) / 3.
-!                    q(:,j,:,1)=sum( q(:,j-1:j+1,:, 1), dim=2) / 3.
-!                    ua(:,j,:) =sum(ua(:,j-1:j+1,:), dim=2) / 3.
-!                    va(:,j,:) =sum(ua(:,j-1:j+1,:), dim=2) / 3. 
-!                    ps(:,j)   =sum(ps(:,j-1:j+1), dim=2) /3. 
-!                    t_surf(:,j)=sum(t_surf(:,j-1:j+1), dim=2) /3. 
-!         end if
-!----------------------------------------------------------------------
-!high latitude filter
-!         if ((j==3) .or. (j==mlat-3) ) then 
-!                    pt(:,j,:) =sum(pt(:,j-2:j-1,:), dim=2) / 2.
-!                    q(:,j,:,1)=sum( q(:,j-2:j-1,:, 1), dim=2) / 2.
-!                    ua(:,j,:) =sum(ua(:,j-2:j-1,:), dim=2) / 2.
-!                    va(:,j,:) =sum(ua(:,j-2:j-1,:), dim=2) / 2. 
-!                    ps(:,j)   =sum(ps(:,j-2:j-1), dim=2) /2. 
-!                    t_surf(:,j)=sum(t_surf(:,j-2:j-1), dim=2) /2. 
-!         end if
-!         if ((j==4) .or. (j==mlat-2) ) then 
-!                    pt(:,j,:) =sum(pt(:,j+1:j+2,:), dim=2) / 2.
-!                    q(:,j,:,1)=sum( q(:,j+1:j+2,:, 1), dim=2) / 2.
-!                    ua(:,j,:) =sum(ua(:,j+1:j+2,:), dim=2) / 2.
-!                    va(:,j,:) =sum(ua(:,j+1:j+2,:), dim=2) / 2. 
-!                    ps(:,j)   =sum(ps(:,j+1:j+2), dim=2) /2. 
-!                    t_surf(:,j)=sum(t_surf(:,j+1:j+2), dim=2) /2. 
-!         end if
-!----------------------------------------------------------------------
-!          do ngroup=1,3
-!          if ((j==ngroup) .or. (j==mlat-ngroup+1)) then
-!             nn = 2**(4-ngroup)
-!             do i=1,nlon, nn
-!                umean(:) = sum(ua(i:i+nn-1,j,:), dim=1) /nn
-!                vmean(:) = sum(va(i:i+nn-1,j,:), dim=1) /nn
-!                tmean(:) = sum(pt(i:i+nn-1,j,:), dim=1) /nn
-!                qmean(:) = sum( q(i:i+nn-1,j,:, 1), dim=1) /nn
-!                psmean = sum(ps(i:i+nn-1, j), dim=1) /nn
-!                tsmean = sum(t_surf(i:i+nn-1, j), dim=1) /nn
-!                do k=1,nn
-!                   ua(i+k-1,j,:) = umean(:) *1.
-!                   va(i+k-1,j,:) = vmean(:) *1.
-!                   pt(i+k-1,j,:) = tmean(:) *1.
-!                   q(i+k-1,j,:,1) = qmean(:)*1.
-!                   ps(i+k-1,j) = psmean
-!                   t_surf(i+k-1,j) = tsmean
-!                end do
-!             end do
-!          end if
-!          end do
-!----------------------------------------------------------------------
          if (j==1) then
 !            psmean   = sum(ps(:,j+1), dim=1)/nlon
             tmean(:) = sum(pt(:,j+1,:), dim=1)/nlon
@@ -966,11 +706,6 @@ call p_var(nlon, mlat, nlev, beglat, endlat, ptop, delp, ps,   &
                pe, peln, pk, pkz, kappa, q, ng_d, ncnst, .false. )
 !----------------------------------------------------------------------
     call update_fv_phys ( delta_t, nt_phys, .false., .false., Time )
-!--------------------------------------------------------------
-!df 141214 change in mixed layer depth
-!if(master) write(6,*) 'surface temperature correction (K)=', ftop
-!if(master) write(6,*) 'p_map=', p_map
-!if(master) write(6,*) r_vir, cp_vir, zvir
 !--------------------------------------------------------------
                                 call timing_off('FV_PHYS')
       endif

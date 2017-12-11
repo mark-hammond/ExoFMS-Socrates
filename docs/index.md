@@ -4,6 +4,8 @@ This is the documentation for the [ExoFms-Socrates code](https://github.com/mark
 
 This repo and documentation also contains instructions for setting up and running any GCM test with Socrates, using HITRAN, HITEMP, or ExoMol data. 
 
+Also see how to use Socrates in [ROCKE-3D](https://simplex.giss.nasa.gov/gcm/ROCKE-3D/UserGuidetoSOCRATES_PlanetRadiation_inROCKE3D.html), related [tools](https://github.com/DavidSAmundsen/socrates_tools), and the (password-protected) (Socrates repository)[https://code.metoffice.gov.uk/trac/socrates].
+
 ## Installation
 
 ## Usage

@@ -577,8 +577,8 @@
   !call escomp(t0, es)
   !print *,'saturation vapor pressure !!!', es
 
-  real(r8) :: tsini = 1700.
-  real(r8) :: pdini = 5e5   !dry partial pressure
+  real(r8) :: tsini = 2500.
+  real(r8) :: pdini = 1e5   !dry partial pressure
 
   real(r8), dimension(401) :: t_initial, q_initial, lnp_initial
   real(r8) :: psini, tslat

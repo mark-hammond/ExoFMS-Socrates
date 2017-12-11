@@ -41,7 +41,7 @@ module fv_diagnostics
  real, save :: ginv
  logical used
  type(time_type) :: fv_time
- real, allocatable, save :: phalf(:)
+ real, allocatable, save :: phalf(:), soc_bins(:)
  save fv_time
 
 contains
