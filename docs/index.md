@@ -4,11 +4,11 @@ This is the documentation for the [ExoFms-Socrates code](https://github.com/mark
 
 This repo and documentation also contains instructions for setting up and running any GCM test with Socrates, using HITRAN, HITEMP, or ExoMol data. 
 
-Also see how to use Socrates in [ROCKE-3D](https://simplex.giss.nasa.gov/gcm/ROCKE-3D/UserGuidetoSOCRATES_PlanetRadiation_inROCKE3D.html), related [tools](https://github.com/DavidSAmundsen/socrates_tools), and the (password-protected) (Socrates repository)[https://code.metoffice.gov.uk/trac/socrates].
+Also see how to use Socrates in [ROCKE-3D](https://simplex.giss.nasa.gov/gcm/ROCKE-3D/UserGuidetoSOCRATES_PlanetRadiation_inROCKE3D.html), related [tools](https://github.com/DavidSAmundsen/socrates_tools), and the (password-protected) [Socrates repository](https://code.metoffice.gov.uk/trac/socrates).
 
 ## Installation
 
-1. Install Socrates following the instructions at the (Socrates repository)[https://code.metoffice.gov.uk/trac/socrates].
+1. Install Socrates following the instructions at the [Socrates repository](https://code.metoffice.gov.uk/trac/socrates).
 
 2. Copy the contents of the "bin" folder to the "srcmods" folder of your experiment
 
@@ -40,8 +40,11 @@ More to be added on using clouds etc.
 
 ## Examples
 
-Earth-like atmosphere
+| Example        | Longwave File  | Shortwave File  | Stellar Flux | Tide-Locked
+| ------------- |:-------------:|: -----:|:-----:|
+| Earth | sp_lw_ga7 | sp_sw_ga7 | 1370 | False
+| Trappist-1d | sp_lw_ga7 | sp_sw_ga7 | 1200 | True
+| 55 Cancri e | spec_file_co2_co_lowres |  | 3.5E6 | True
 
-55 Cancri e CO/CO2 atmosphere
 
-Cloudy pure H2O atmosphere
+
