@@ -512,7 +512,7 @@ CALL socrates_interface(Time, rlat, rlon,     &
      output_heating_rate, net_surf_sw_down, surf_lw_down, fms_stellar_flux )
 
 output_heating_rate(:,:5) = 0.0
-tg_tmp = tg_tmp + RESHAPE(output_heating_rate, (/144, 3, 40/)) * delta_t*0.1
+tg_tmp = tg_tmp + RESHAPE(output_heating_rate, (/144, 3, 40/)) * delta_t
 
 ! NB net_surf_sw_down and surf_lw_down have now been set
 ! THey are used below
@@ -520,9 +520,9 @@ tg_tmp = tg_tmp + RESHAPE(output_heating_rate, (/144, 3, 40/)) * delta_t*0.1
 
 
 
-!omga=omga*0.0
-!u=u*0.0
-!v=v*0.0
+omga=omga*0.0
+u=u*0.0
+v=v*0.0
 
 
 !------------------------------------------------------
@@ -634,7 +634,7 @@ do ij=1,tsiz
     !prev is actually after
     ! update surface temperature and pressure
 
-!KLUDGE - flux_t off
+! TEST - 0*SWD, 0*LWD
     delta_t_surf = (surf_lw_down(i,j) + net_surf_sw_down(i,j)  &
                      - flux_t(i,j) - flux_r(i,j) ) &
                     * delta_t / rho_cp / mld !eff_heat_capacity
@@ -647,7 +647,7 @@ do ij=1,tsiz
 
 !    delta_t_surf = (surf_lw_down(i,j) + net_surf_sw_down(i,j)-0.5*5.67e-8*t_surf(i,j)**4) &
 !                   * delta_t / 200000.0
-    t_surf(i,j) = t_surf(i,j) + delta_t_surf*0.1
+    t_surf(i,j) = t_surf(i,j) + delta_t_surf
     !correct the energy imbalance due to vertical interpolation
 
     tg_tmp(i,j,:) = t_after
@@ -753,11 +753,11 @@ if(id_rh > 0)     used = send_data(id_rh, rh, Time)
        ie = is + isiz - 1
        q(is:ie,j,nlev,2) = t_surf(is:ie,j)
 
-call socrates_hires_init(1, nlon, beglat, endlat, nlev, axes, Time,rlat(:,:))
+!!call socrates_hires_init(1, nlon, beglat, endlat, nlev, axes, Time,rlat(:,:))
 
-call socrates_hires_interface(Time, rlat, rlon,     &
-     tg_tmp, t_surf, p_full, p_half, n_profile, n_layer,     &
-     output_heating_rate, net_surf_sw_down, surf_lw_down, fms_stellar_flux )
+!!call socrates_hires_interface(Time, rlat, rlon,     &
+!!     tg_tmp, t_surf, p_full, p_half, n_profile, n_layer,     &
+!!     output_heating_rate, net_surf_sw_down, surf_lw_down, fms_stellar_flux )
 
     end do
 

@@ -203,8 +203,6 @@ input_p_level = RESHAPE(fms_p_half, (/432, 41/))
 input_mixing_ratio = 1.E-1
 input_o3_mixing_ratio = 1.E-1
 
-!PRINT*, 'ook!'
-!PRINT*, input_t(1,:)
 
 
 !-------------
@@ -220,6 +218,7 @@ input_layer_heat_capacity = 29.07
 !WHERE (fms_stellar_flux < 0.0) fms_stellar_flux = 0.0
 input_solar_irrad = RESHAPE(fms_stellar_flux, (/432/))
 input_t_surf = RESHAPE(fms_t_surf, (/432/))
+
 
 !--------------
 
@@ -262,26 +261,24 @@ CALL socrates_calc(Time_diag, control_lw, spectrum_lw,                          
 
 ! Set output arrays
 fms_surf_lw_down = RESHAPE(soc_flux_down(:,40) , (/144,3/))
-soc_heating_rate(:,:10) = 0.0
-output_heating_rate =output_heating_rate + soc_heating_rate
+soc_heating_rate(:,40) = soc_heating_rate(:,39)
+soc_heating_rate(:,38) = soc_heating_rate(:,37)
+
+output_heating_rate =  soc_heating_rate
 
 
  end if
-!PRINT*, 'ook!'
-!PRINT*, soc_heating_rate(::144,:)
-!PRINT*, soc_flux_up(1,:)
 
 
-fms_net_surf_sw_down = fms_stellar_flux(:,:)!RESHAPE(soc_flux_down(:,0) , (/144,3/))
 
-    used = send_data ( id_soc_heating_lw, RESHAPE(soc_heating_rate, (/144,3,40/)), Time_diag)
-    used = send_data ( id_soc_heating_sw, RESHAPE(soc_flux_up, (/144,3,40/)), Time_diag)
+ !   used = send_data ( id_soc_heating_lw, RESHAPE(soc_heating_rate, (/144,3,40/)), Time_diag)
+ !   used = send_data ( id_soc_heating_sw, RESHAPE(soc_flux_up, (/144,3,40/)), Time_diag)
 !--------------
 
 ! SW calculation
-if (1==2) then
-!control_sw%isolir = 1
-!CALL read_control(control_sw, spectrum_sw)
+if (1==1) then
+control_sw%isolir = 1
+CALL read_control(control_sw, spectrum_sw)
 
 CALL socrates_calc(Time_diag, control_sw, spectrum_sw,                                          &
   n_profile, n_layer, input_n_cloud_layer, input_n_aer_mode,                   &
@@ -297,9 +294,6 @@ CALL socrates_calc(Time_diag, control_sw, spectrum_sw,                          
 fms_net_surf_sw_down = RESHAPE(soc_flux_down(:,0) , (/144,3/))
 output_heating_rate = output_heating_rate + soc_heating_rate
 
-!PRINT*, 'ook'
-!PRINT*, soc_flux_down(1,:)
-
 
 ! Send SW diagnostics
 !if ( control%isolir == 1 ) then
@@ -310,11 +304,10 @@ output_heating_rate = output_heating_rate + soc_heating_rate
 ! Send LW diagnosticis
 !     used = send_data ( id_soc_olr, RESHAPE(flux_up(:,0), (/144,3/)), Time_diag)
 !     used = send_data ( id_soc_olr_spectrum_lw, RESHAPE(radout%flux_up_band(:,0,:), (/144,3,20/)), Time_diag)
-     used = send_data ( id_soc_heating_sw, RESHAPE(soc_heating_rate, (/144,3,40/)), Time_diag)
+!     used = send_data ( id_soc_heating_sw, RESHAPE(soc_heating_rate, (/144,3,40/)), Time_diag)
 
 endif
 
-output_heating_rate = 0.0
 !--------------
 
 end subroutine socrates_interface
