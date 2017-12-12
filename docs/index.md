@@ -18,7 +18,7 @@ Also see how to use Socrates in [ROCKE-3D](https://simplex.giss.nasa.gov/gcm/ROC
 
 The "socrates_interface" function takes the arguments:
 
-```
+```fortran
 CALL socrates_interface(Time, rlat, rlon,     &
      tg_tmp, t_surf, p_full, p_half, n_profile, n_layer,     &
      output_heating_rate, net_surf_sw_down, surf_lw_down, fms_stellar_flux )
