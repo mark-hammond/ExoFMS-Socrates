@@ -32,7 +32,13 @@ Diagnostics such as band-averaged fluxes are dealt with inside the interface mod
 
 Socrates + ExoFMS has the following structure:
 
-![socrates](socrates_structure.001.png)
+![socrates](soc_diag.png)
+
+1. Call socrates_init at the start of the model run, to read in the spectral files (read_spectrum) and options (read_control)
+
+2. Call socrates_interface at every timestep, to set the input arrays to Socrates (set_atm etc.) then call socrates_calc
+
+3. Socrates_interface sends the diagnostics at every timestep
 
 The intention is that a normal user can change the parameters of their test (longwave spectral file, shortwave spectral file, stellar flux, and Socrates options) without going below the interface level.
 
