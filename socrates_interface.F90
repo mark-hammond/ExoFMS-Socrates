@@ -17,52 +17,71 @@ USE read_control_mod
 USE def_control, ONLY: StrCtrl,  allocate_control,   deallocate_control
 USE def_spectrum
 
-!----------
 implicit none
 
-!Input spectra
+! Input spectra
 type (StrSpecData) :: spectrum_lw
 type (StrSpecData) :: spectrum_sw
 
 ! Control options:
-  TYPE(StrCtrl) :: control
-  TYPE(StrCtrl) :: control_sw
-  TYPE(StrCtrl) :: control_lw
+type(StrCtrl) :: control
+type(StrCtrl) :: control_sw
+type(StrCtrl) :: control_lw
 
+! Diagnostic IDs, name, and missing value
 integer :: id_soc_olr, id_soc_olr_spectrum_lw, id_soc_surf_spectrum_sw
 integer :: id_soc_heating_sw, id_soc_heating_lw, id_soc_heating_rate
-
 character(len=10), parameter :: soc_mod_name = 'socrates'
-
 real :: missing_value = -999
+
+! Socrates inputs from namelist
+real :: stellar_flux = 1370.0
+logical :: tidally_locked = .true.
+namelist/socrates_nml/ stellar_flux, tide_locked
+
 
 contains
 
 subroutine socrates_init(is, ie, js, je, num_levels, axes, Time, lat)
+      !! Initialises Socrates spectra, arrays, and constants
 
-
-!-------------------------------------------------------------------------------------
+! Arguments
 integer, intent(in), dimension(4) :: axes
+      !! NB axes refers to the handles of the axes defined in fv_diagnostics
 type(time_type), intent(in)       :: Time
 integer, intent(in)               :: is, ie, js, je, num_levels
 real, intent(in) , dimension(:,:)   :: lat
 !-------------------------------------------------------------------------------------
 
+! Read in namelist
+unit = open_file ('input.nml', action='read')
+ierr=1
+do while (ierr /= 0)
+   read  (unit, nml=radiation_nml, iostat=io, end=10)
+   ierr = check_nml_error (io, 'socrates_nml')
+enddo
+10 call close_file (unit)
+
 !-----------------------------------------------------------------------
 
+! Socrates spectral files -- should be set by namelist
 control_lw%spectral_file = '~/spec_file_co2_co_lowres'
-control_sw%spectral_file = '~/spec_file_co2_co_lowres_copy'
+control_sw%spectral_file = '~/spec_file_co2_co_lowres'
 
+! Read in spectral files
 CALL read_spectrum(control_lw%spectral_file,spectrum_lw)
 CALL read_spectrum(control_sw%spectral_file,spectrum_sw)
 
+! Set Socrates configuration
 CALL read_control(control_lw,spectrum_lw)
 CALL read_control(control_sw,spectrum_sw)
 
+! Specify LW and SW setups
 control_sw%isolir=1
 control_lw%isolir=2
 
-!------------ initialize diagnostic fields ---------------
+
+! Register diagostic fields
     id_soc_olr = &
     register_diag_field ( soc_mod_name, 'soc_olr', axes(1:2), Time, &
                'outgoing longwave radiation', &
@@ -92,17 +111,17 @@ control_lw%isolir=2
     register_diag_field ( soc_mod_name, 'soc_heating_rate', axes(1:3), Time, &
                'socrates total heating rate', &
                'J/s', missing_value=missing_value               )
+
 return
 end subroutine socrates_init
 ! ==================================================================================
 
+
 ! Set up the call to the Socrates radiation scheme
 ! -----------------------------------------------------------------------------
-!DIAG Added Time
 subroutine socrates_interface(Time_diag, rlat, rlon,        &
   fms_temp, fms_t_surf, fms_p_full, fms_p_half, n_profile, n_layer,        &
   output_heating_rate, fms_net_surf_sw_down, fms_surf_lw_down, fms_stellar_flux )
-
 
 USE realtype_rd
 USE soc_constants_mod
@@ -174,13 +193,6 @@ namelist/socrates_nml/ soc_tide_locked, soc_stellar_constant
 ! Dimensions:
   TYPE(StrDim) :: dimen
 
-! Control options:
-!  TYPE(StrCtrl) :: control
-!  TYPE(StrCtrl) :: control_sw
-!  TYPE(StrCtrl) :: control_lw
-
-
-! Atmospheric input:
   TYPE(StrAtm) :: atm_input
 
 ! Loop variables
@@ -210,13 +222,10 @@ input_o3_mixing_ratio = 1.E-1
 
 !Default parameters
 input_cos_zenith_angle = 0.7
-!input_solar_irrad = 1370.0
 input_orog_corr = 0.0
 input_layer_heat_capacity = 29.07
 
 !Set tide-locked flux - should be set by namelist eventually!
-!fms_stellar_flux = soc_stellar_constant*cos(rlat)*cos(rlon)
-!WHERE (fms_stellar_flux < 0.0) fms_stellar_flux = 0.0
 input_solar_irrad = RESHAPE(fms_stellar_flux, (/432/))
 input_t_surf = RESHAPE(fms_t_surf, (/432/))
 
@@ -246,12 +255,15 @@ DO i=n_layer, 1, -1
       END DO
 END DO
 
+
+
+
 !--------------
 ! LW calculation
 
-if (1==1) then
 control_lw%isolir = 2
 CALL read_control(control_lw, spectrum_lw)
+
 CALL socrates_calc(Time_diag, control_lw, spectrum_lw,                                          &
   n_profile, n_layer, input_n_cloud_layer, input_n_aer_mode,                   &
   input_cld_subcol_gen, input_cld_subcol_req,                                  &
@@ -264,21 +276,18 @@ CALL socrates_calc(Time_diag, control_lw, spectrum_lw,                          
 
 ! Set output arrays
 fms_surf_lw_down = RESHAPE(soc_flux_down(:,40) , (/144,3/))
-!soc_heating_rate(:,40) = soc_heating_rate(:,39)
-!soc_heating_rate(:,38) = soc_heating_rate(:,37)
 
-
-
- end if
 
 
 
  !   used = send_data ( id_soc_heating_lw, RESHAPE(soc_heating_rate, (/144,3,40/)), Time_diag)
  !   used = send_data ( id_soc_heating_sw, RESHAPE(soc_flux_up, (/144,3,40/)), Time_diag)
+
 !--------------
 
+
+
 ! SW calculation
-if (1==1) then
 control_sw%isolir = 1
 CALL read_control(control_sw, spectrum_sw)
 
@@ -297,11 +306,8 @@ fms_net_surf_sw_down = RESHAPE(soc_flux_down(:,0) , (/144,3/))
 output_heating_rate = output_heating_rate_sw + soc_heating_rate_lw
 
 
-! Send SW diagnostics
-!if ( control%isolir == 1 ) then
-!     used = send_data ( id_soc_surf_spectrum_sw, RESHAPE(radout%flux_down_band(:,40,:), (/144,3,20/)), Time_diag)
-!     used = send_data ( id_soc_heating_sw, RESHAPE(heating_rate, (/144,3,40/)), Time_diag)
-!endif
+
+
 
 ! Send LW diagnosticis
 !     used = send_data ( id_soc_olr, RESHAPE(flux_up(:,0), (/144,3/)), Time_diag)
