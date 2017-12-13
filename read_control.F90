@@ -47,7 +47,7 @@ case(ip_solar)
   control%l_solvar         = .FALSE.
   control%l_h2o            = .FALSE.
   control%l_co2            = .FALSE.
-  control%l_co             = .FALSE.!.TRUE.
+  control%l_co             = .TRUE.
   control%l_o3             = .FALSE.!.TRUE.
   control%l_n2o            = .FALSE.!.TRUE.
   control%l_ch4            = .FALSE.!.TRUE.

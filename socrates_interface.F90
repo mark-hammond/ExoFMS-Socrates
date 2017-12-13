@@ -148,7 +148,8 @@ real(r_def), intent(out) :: fms_surf_lw_down(:,:)
 ! Arrays to send to Socrates
 real, dimension(n_profile,n_layer) :: input_p, input_t, input_mixing_ratio, &
                                       input_d_mass, input_density, input_layer_heat_capacity, &
-                                      soc_heating_rate, output_heating_rate, input_o3_mixing_ratio
+                                      soc_heating_rate, output_heating_rate, input_o3_mixing_ratio, &
+                                      soc_heating_rate_lw, soc_heating_rate_sw
 real, dimension(n_profile,0:n_layer) :: input_p_level, input_t_level, soc_flux_direct, &
                                         soc_flux_down, soc_flux_up, output_flux_net
 real, dimension(n_profile) :: input_t_surf, input_cos_zenith_angle, input_solar_irrad, &
@@ -249,6 +250,8 @@ END DO
 ! LW calculation
 
 if (1==1) then
+control_lw%isolir = 2
+CALL read_control(control_lw, spectrum_lw)
 CALL socrates_calc(Time_diag, control_lw, spectrum_lw,                                          &
   n_profile, n_layer, input_n_cloud_layer, input_n_aer_mode,                   &
   input_cld_subcol_gen, input_cld_subcol_req,                                  &
@@ -257,14 +260,13 @@ CALL socrates_calc(Time_diag, control_lw, spectrum_lw,                          
   input_t_surf, input_cos_zenith_angle, input_solar_irrad, input_orog_corr,    &
   input_l_planet_grey_surface, input_planet_albedo, input_planet_emissivity,   &
   input_layer_heat_capacity,                                                   &
-  soc_flux_direct, soc_flux_down, soc_flux_up, soc_heating_rate)
+  soc_flux_direct, soc_flux_down, soc_flux_up, soc_heating_rate_lw)
 
 ! Set output arrays
 fms_surf_lw_down = RESHAPE(soc_flux_down(:,40) , (/144,3/))
-soc_heating_rate(:,40) = soc_heating_rate(:,39)
-soc_heating_rate(:,38) = soc_heating_rate(:,37)
+!soc_heating_rate(:,40) = soc_heating_rate(:,39)
+!soc_heating_rate(:,38) = soc_heating_rate(:,37)
 
-output_heating_rate =  soc_heating_rate
 
 
  end if
@@ -288,11 +290,11 @@ CALL socrates_calc(Time_diag, control_sw, spectrum_sw,                          
  input_t_surf, input_cos_zenith_angle, input_solar_irrad, input_orog_corr,    &
   input_l_planet_grey_surface, input_planet_albedo, input_planet_emissivity,   &
   input_layer_heat_capacity,                                                   &
-  soc_flux_direct, soc_flux_down, soc_flux_up, soc_heating_rate)
+  soc_flux_direct, soc_flux_down, soc_flux_up, soc_heating_rate_sw)
 
 ! Set output arrays
 fms_net_surf_sw_down = RESHAPE(soc_flux_down(:,0) , (/144,3/))
-output_heating_rate = output_heating_rate + soc_heating_rate
+output_heating_rate = output_heating_rate_sw + soc_heating_rate_lw
 
 
 ! Send SW diagnostics
