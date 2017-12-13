@@ -512,7 +512,7 @@ CALL socrates_interface(Time, rlat, rlon,     &
      output_heating_rate, net_surf_sw_down, surf_lw_down, fms_stellar_flux )
 
 output_heating_rate(:,:5) = 0.0
-tg_tmp = tg_tmp + RESHAPE(output_heating_rate, (/144, 3, 40/)) * delta_t*0.1
+tg_tmp = tg_tmp + RESHAPE(output_heating_rate, (/144, 3, 40/)) * delta_t*0.01
 
 ! NB net_surf_sw_down and surf_lw_down have now been set
 ! THey are used below
@@ -647,7 +647,7 @@ do ij=1,tsiz
 
 !    delta_t_surf = (surf_lw_down(i,j) + net_surf_sw_down(i,j)-0.5*5.67e-8*t_surf(i,j)**4) &
 !                   * delta_t / 200000.0
-    t_surf(i,j) = t_surf(i,j) + delta_t_surf*0.1
+    t_surf(i,j) = t_surf(i,j) + delta_t_surf*0.01
     !correct the energy imbalance due to vertical interpolation
 
     tg_tmp(i,j,:) = t_after
